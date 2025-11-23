@@ -366,4 +366,82 @@ def page_importar_excel(data):
     
     if uploaded_file:
         try:
-            df_importado = pd.read_excel(uploaded_file, sheet_name='Ingredien
+            df_importado = pd.read_excel(uploaded_file, sheet_name='Ingredientes')
+            required_columns = ['Nombre', 'Unidad_Base', 'Costo_Por_Unidad']
+            if not all(col in df_importado.columns for col in required_columns):
+                st.error(f"El archivo Excel debe tener las columnas: {', '.join(required_columns)}")
+            else:
+                st.dataframe(df_importado)
+                if st.button("📤 Confirmar Importación y Sobrescribir Precios"):
+                    with st.spinner("Importando datos..."):
+                        nuevos_ingredientes = {}
+                        for index, row in df_importado.iterrows():
+                            nombre = row['Nombre']
+                            if pd.isna(nombre):
+                                continue
+                            nuevos_ingredientes[nombre] = {
+                                "unidad_base": row['Unidad_Base'],
+                                "costo_por_unidad": float(row['Costo_Por_Unidad'])
+                            }
+                        data['ingredientes_globales'] = nuevos_ingredientes
+                        save_data(data)
+                        st.success("¡Ingredientes importados y guardados con éxito!")
+                        st.rerun()
+        except Exception as e:
+            st.error(f"Ocurrió un error al leer el archivo: {e}")
+
+
+# --- LÓGICA PRINCIPAL ---
+def main():
+    # Cargar el CSS personalizado
+    local_css("styles.css")
+
+    # Inicializar estado de la sesión
+    if 'logged_in' not in st.session_state:
+        st.session_state.logged_in = False
+    if 'current_page' not in st.session_state:
+        st.session_state.current_page = 'menu'
+
+    data = load_data()
+
+    # --- BARRA LATERAL ---
+    with st.sidebar:
+        show_login()
+
+        st.title("Navegación")
+        if st.button("📖 Ver Recetas", use_container_width=True):
+            st.session_state.current_page = 'menu'
+            st.rerun()
+        
+        if st.session_state.logged_in:
+            st.divider()
+            st.subheader("Panel de Administración")
+            if st.button("➕ Crear Receta", use_container_width=True):
+                st.session_state.current_page = 'crear_receta'
+                st.rerun()
+            if st.button("💰 Editar Precios", use_container_width=True):
+                st.session_state.current_page = 'editar_precios'
+                st.rerun()
+            if st.button("🛒 Gestionar Ingredientes", use_container_width=True):
+                st.session_state.current_page = 'gestionar_ingredientes'
+                st.rerun()
+            if st.button("📊 Importar/Exportar Excel", use_container_width=True):
+                st.session_state.current_page = 'importar_excel'
+                st.rerun()
+
+    # --- CONTENIDO PRINCIPAL ---
+    if st.session_state.current_page == 'menu':
+        page_menu(data)
+    elif st.session_state.current_page == 'detalle':
+        page_detalle(data)
+    elif st.session_state.current_page == 'editar_precios':
+        page_editar_precios(data)
+    elif st.session_state.current_page == 'crear_receta':
+        page_crear_receta(data)
+    elif st.session_state.current_page == 'gestionar_ingredientes':
+        page_gestionar_ingredientes(data)
+    elif st.session_state.current_page == 'importar_excel':
+        page_importar_excel(data)
+
+if __name__ == '__main__':
+    main()
