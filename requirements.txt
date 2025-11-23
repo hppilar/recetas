@@ -1,4 +1,4 @@
-treamlit
-pandas
-Pillow
-openpyxl
+streamlit==1.29.0
+pandas==2.1.4
+Pillow==10.1.0
+openpyxl==3.1.2
