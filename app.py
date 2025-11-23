@@ -4,6 +4,13 @@ import pandas as pd
 from PIL import Image
 import io
 
+# --- FUNCIONES AUXILIARES ---
+
+def local_css(file_name):
+    """Carga un archivo CSS local para personalizar la app."""
+    with open(file_name) as f:
+        st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
+
 # --- CONFIGURACIÓN ---
 st.set_page_config(
     page_title="Recetas de Repostería Pro",
@@ -36,7 +43,7 @@ def save_data(data):
         st.cache_data.clear()
         st.toast("✅ ¡Cambios guardados con éxito!", icon="success")
 
-# --- FUNCIONES DE PÁGINA (NUEVAS Y MODIFICADAS) ---
+# --- FUNCIONES DE PÁGINA ---
 
 def show_login():
     """Muestra la interfaz de login en la barra lateral."""
@@ -61,7 +68,7 @@ def page_menu(data):
     """Muestra el menú principal de recetas con búsqueda."""
     st.title("🧁 Mis Recetas de Repostería")
     
-    # --- NUEVO: Barra de búsqueda ---
+    # --- Barra de búsqueda ---
     search_query = st.text_input("🔍 Buscar recetas...", placeholder="Escribe el nombre de una receta...").lower()
     
     # Filtrar recetas basadas en la búsqueda
@@ -100,18 +107,18 @@ def page_detalle(data):
         st.session_state.current_page = 'menu'
         st.rerun()
 
-    # --- MODO EDICIÓN MEJORADO ---
+    # --- MODO EDICIÓN ---
     if st.session_state.get('logged_in', False):
         edit_mode = st.sidebar.toggle("📝 Modo Edición", key="edit_toggle")
         if edit_mode:
             st.header(f"Editando: {receta['nombre']}")
             
-            # --- NUEVO: Botón de eliminar receta ---
+            # Botón de eliminar receta
             if st.button("🗑️ Eliminar Esta Receta", type="secondary"):
                 st.session_state.receta_a_borrar_index = receta_index
                 st.session_state.mostrar_confirmacion_borrado = True
             
-            # --- NUEVO: Confirmación de borrado ---
+            # Confirmación de borrado
             if st.session_state.get('mostrar_confirmacion_borrado', False):
                 st.error(f"¿Estás seguro de que quieres eliminar '{receta['nombre']}'? Esta acción no se puede deshacer.")
                 col1, col2 = st.columns(2)
@@ -126,7 +133,16 @@ def page_detalle(data):
                     if st.button("Cancelar"):
                         st.session_state.mostrar_confirmacion_borrado = False
                         st.rerun()
-                return # Detener la ejecución mientras se muestra la confirmación
+                return
+
+            # Botones para añadir campos (FUERA del formulario)
+            st.subheader("Ingredientes")
+            if 'num_ingredientes_edit' not in st.session_state:
+                st.session_state.num_ingredientes_edit = len(receta['ingredientes'])
+            
+            if st.button("➕ Añadir Ingrediente", key="add_edit_ing"):
+                st.session_state.num_ingredientes_edit += 1
+                st.rerun()
 
             # Formulario de edición
             with st.form("edit_recipe_form"):
@@ -134,46 +150,40 @@ def page_detalle(data):
                 nuevo_nombre = st.text_input("Nombre de la receta", value=receta['nombre'])
                 nueva_imagen = st.text_input("Ruta de la imagen", value=receta['imagen'])
                 
-                # --- NUEVO: Edición dinámica de ingredientes ---
-                st.subheader("Ingredientes")
-                num_ingredientes = st.session_state.get('num_ingredientes_edit', len(receta['ingredientes']))
-                
-                if st.button("➕ Añadir Ingrediente"):
-                    st.session_state.num_ingredientes_edit = num_ingredientes + 1
-                    st.rerun()
-                
                 ingredientes_editados = []
-                for i in range(num_ingredientes):
-                    cols = st.columns([3, 1, 1])
+                for i in range(st.session_state.num_ingredientes_edit):
+                    cols = st.columns([3, 1])
                     with cols[0]:
-                        nombre_ing = st.selectbox("Ingrediente", options=list(data['ingredientes_globales'].keys()), key=f"ing_name_{i}")
+                        current_nombre = receta['ingredientes'][i]['nombre'] if i < len(receta['ingredientes']) else list(data['ingredientes_globales'].keys())[0]
+                        nombre_ing = st.selectbox("Ingrediente", options=list(data['ingredientes_globales'].keys()), index=list(data['ingredientes_globales'].keys()).index(current_nombre), key=f"ing_name_{i}")
                     with cols[1]:
-                        cantidad_ing = st.number_input("Cantidad", value=receta['ingredientes'][i]['cantidad'] if i < len(receta['ingredientes']) else 1.0, key=f"ing_cant_{i}")
+                        current_cantidad = receta['ingredientes'][i]['cantidad'] if i < len(receta['ingredientes']) else 1.0
+                        cantidad_ing = st.number_input("Cantidad", value=current_cantidad, key=f"ing_cant_{i}")
                     ingredientes_editados.append({"nombre": nombre_ing, "cantidad": cantidad_ing})
                 
-                # --- NUEVO: Edición dinámica de pasos ---
                 st.subheader("Pasos")
-                num_pasos = st.session_state.get('num_pasos_edit', len(receta['pasos']))
-                if st.button("➕ Añadir Paso"):
-                    st.session_state.num_pasos_edit = num_pasos + 1
+                if 'num_pasos_edit' not in st.session_state:
+                    st.session_state.num_pasos_edit = len(receta['pasos'])
+
+                if st.button("➕ Añadir Paso", key="add_edit_step"):
+                    st.session_state.num_pasos_edit += 1
                     st.rerun()
-                
+
                 pasos_editados = []
-                for i in range(num_pasos):
+                for i in range(st.session_state.num_pasos_edit):
                     paso_texto = receta['pasos'][i] if i < len(receta['pasos']) else ""
                     pasos_editados.append(st.text_area(f"Paso {i+1}", value=paso_texto, key=f"paso_{i}"))
                 
                 submitted = st.form_submit_button("💾 Guardar Cambios en esta Receta")
                 if submitted:
-                    # Actualizar el diccionario de la receta en memoria
                     receta['id'] = nuevo_id
                     receta['nombre'] = nuevo_nombre
                     receta['imagen'] = nueva_imagen
                     receta['ingredientes'] = ingredientes_editados
                     receta['pasos'] = pasos_editados
                     save_data(data)
-                    st.session_state.num_ingredientes_edit = None
-                    st.session_state.num_pasos_edit = None
+                    del st.session_state.num_ingredientes_edit
+                    del st.session_state.num_pasos_edit
                     st.rerun()
             return
 
@@ -181,7 +191,6 @@ def page_detalle(data):
     st.title(receta['nombre'])
     st.image(receta['imagen'], width=500)
 
-    # (Código de la calculadora - se adapta al nuevo JSON)
     st.header("🥄 Calculadora de Ingredientes y Costos")
     cantidad_deseada = st.number_input(f"¿Cuántas {receta['unidad_base']} quieres hacer?", min_value=1, value=receta['cantidad_base'], step=1)
     factor_escala = cantidad_deseada / receta['cantidad_base']
@@ -239,11 +248,24 @@ def page_editar_precios(data):
             save_data(data)
             st.rerun()
 
-# --- NUEVAS PÁGINAS DE ADMINISTRACIÓN ---
-
 def page_crear_receta(data):
     """Página para crear una nueva receta desde cero."""
     st.title("➕ Crear Nueva Receta")
+
+    # Inicializar y manejar contadores fuera del formulario
+    if 'num_ingredientes_new' not in st.session_state:
+        st.session_state.num_ingredientes_new = 3
+    if 'num_pasos_new' not in st.session_state:
+        st.session_state.num_pasos_new = 3
+
+    # Botones para añadir campos (FUERA del formulario)
+    if st.button("➕ Añadir campo de ingrediente"):
+        st.session_state.num_ingredientes_new += 1
+        st.rerun()
+    if st.button("➕ Añadir campo de paso"):
+        st.session_state.num_pasos_new += 1
+        st.rerun()
+
     with st.form("create_recipe_form"):
         nuevo_id = st.text_input("ID Único (ej: pastel_nuevo)")
         nuevo_nombre = st.text_input("Nombre de la receta")
@@ -252,13 +274,8 @@ def page_crear_receta(data):
         nueva_unidad_base = st.text_input("Unidad base (ej: porciones, unidades)")
         
         st.subheader("Ingredientes")
-        num_ingredientes = st.session_state.get('num_ingredientes_new', 3)
-        if st.button("➕ Añadir Ingrediente", key="add_new_ing"):
-            st.session_state.num_ingredientes_new = num_ingredientes + 1
-            st.rerun()
-
         ingredientes_nuevos = []
-        for i in range(num_ingredientes):
+        for i in range(st.session_state.num_ingredientes_new):
             cols = st.columns([3, 1])
             with cols[0]:
                 nombre_ing = st.selectbox("Ingrediente", options=list(data['ingredientes_globales'].keys()), key=f"new_ing_name_{i}")
@@ -267,18 +284,12 @@ def page_crear_receta(data):
             ingredientes_nuevos.append({"nombre": nombre_ing, "cantidad": cantidad_ing})
 
         st.subheader("Pasos")
-        num_pasos = st.session_state.get('num_pasos_new', 3)
-        if st.button("➕ Añadir Paso", key="add_new_step"):
-            st.session_state.num_pasos_new = num_pasos + 1
-            st.rerun()
-
         pasos_nuevos = []
-        for i in range(num_pasos):
+        for i in range(st.session_state.num_pasos_new):
             pasos_nuevos.append(st.text_area(f"Paso {i+1}", key=f"new_paso_{i}"))
 
         submitted = st.form_submit_button("✅ Crear Receta")
         if submitted:
-            # Validar que el ID no exista
             if any(r['id'] == nuevo_id for r in data['recetas']):
                 st.error(f"El ID '{nuevo_id}' ya existe. Por favor, elige otro.")
             else:
@@ -293,8 +304,8 @@ def page_crear_receta(data):
                 }
                 data['recetas'].append(nueva_receta)
                 save_data(data)
-                st.session_state.num_ingredientes_new = None
-                st.session_state.num_pasos_new = None
+                del st.session_state.num_ingredientes_new
+                del st.session_state.num_pasos_new
                 st.success(f"Receta '{nuevo_nombre}' creada con éxito.")
                 st.session_state.current_page = 'menu'
                 st.rerun()
@@ -336,7 +347,6 @@ def page_importar_excel(data):
     if st.button("📥 Descargar Plantilla Excel"):
         df = pd.DataFrame.from_dict(data['ingredientes_globales'], orient='index').reset_index()
         df.rename(columns={'index': 'Nombre'}, inplace=True)
-        # Reordenar columnas para que coincidan con el formato
         df = df[['Nombre', 'unidad_base', 'costo_por_unidad']]
         df.rename(columns={'unidad_base': 'Unidad_Base', 'costo_por_unidad': 'Costo_Por_Unidad'}, inplace=True)
         
@@ -356,79 +366,4 @@ def page_importar_excel(data):
     
     if uploaded_file:
         try:
-            df_importado = pd.read_excel(uploaded_file, sheet_name='Ingredientes')
-            required_columns = ['Nombre', 'Unidad_Base', 'Costo_Por_Unidad']
-            if not all(col in df_importado.columns for col in required_columns):
-                st.error(f"El archivo Excel debe tener las columnas: {', '.join(required_columns)}")
-            else:
-                st.dataframe(df_importado)
-                if st.button("📤 Confirmar Importación y Sobrescribir Precios"):
-                    with st.spinner("Importando datos..."):
-                        nuevos_ingredientes = {}
-                        for index, row in df_importado.iterrows():
-                            nombre = row['Nombre']
-                            if pd.isna(nombre):
-                                continue
-                            nuevos_ingredientes[nombre] = {
-                                "unidad_base": row['Unidad_Base'],
-                                "costo_por_unidad": float(row['Costo_Por_Unidad'])
-                            }
-                        data['ingredientes_globales'] = nuevos_ingredientes
-                        save_data(data)
-                        st.success("¡Ingredientes importados y guardados con éxito!")
-                        st.rerun()
-        except Exception as e:
-            st.error(f"Ocurrió un error al leer el archivo: {e}")
-
-
-# --- LÓGICA PRINCIPAL ---
-def main():
-    # Inicializar estado de la sesión
-    if 'logged_in' not in st.session_state:
-        st.session_state.logged_in = False
-    if 'current_page' not in st.session_state:
-        st.session_state.current_page = 'menu'
-
-    data = load_data()
-
-    # --- BARRA LATERAL ---
-    with st.sidebar:
-        show_login()
-
-        st.title("Navegación")
-        if st.button("📖 Ver Recetas", use_container_width=True):
-            st.session_state.current_page = 'menu'
-            st.rerun()
-        
-        if st.session_state.logged_in:
-            st.divider()
-            st.subheader("Panel de Administración")
-            if st.button("➕ Crear Receta", use_container_width=True):
-                st.session_state.current_page = 'crear_receta'
-                st.rerun()
-            if st.button("💰 Editar Precios", use_container_width=True):
-                st.session_state.current_page = 'editar_precios'
-                st.rerun()
-            if st.button("🛒 Gestionar Ingredientes", use_container_width=True):
-                st.session_state.current_page = 'gestionar_ingredientes'
-                st.rerun()
-            if st.button("📊 Importar/Exportar Excel", use_container_width=True):
-                st.session_state.current_page = 'importar_excel'
-                st.rerun()
-
-    # --- CONTENIDO PRINCIPAL ---
-    if st.session_state.current_page == 'menu':
-        page_menu(data)
-    elif st.session_state.current_page == 'detalle':
-        page_detalle(data)
-    elif st.session_state.current_page == 'editar_precios':
-        page_editar_precios(data)
-    elif st.session_state.current_page == 'crear_receta':
-        page_crear_receta(data)
-    elif st.session_state.current_page == 'gestionar_ingredientes':
-        page_gestionar_ingredientes(data)
-    elif st.session_state.current_page == 'importar_excel':
-        page_importar_excel(data)
-
-if __name__ == '__main__':
-    main()
+            df_importado = pd.read_excel(uploaded_file, sheet_name='Ingredien
