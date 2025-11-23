@@ -1,0 +1,88 @@
+/* Tema Oscuro Profesional para la App de Recetas */
+
+/* Fondo principal de la app */
+.stApp {
+    background-color: #2b2b2b;
+    color: #ffffff;
+}
+
+/* Barra lateral */
+.css-1d391kg {
+    background-color: #3c3c3c;
+}
+
+/* Títulos y encabezados */
+h1, h2, h3 {
+    color: #ffffff;
+    border-bottom: 2px solid #4a9eff;
+    padding-bottom: 0.3rem;
+}
+
+/* Contenedores (st.container, st.columns) */
+div[data-testid="stVerticalBlock"] {
+    background-color: #333333;
+    padding: 1rem;
+    border-radius: 10px;
+    margin-bottom: 1rem;
+}
+
+/* Botones */
+.stButton > button {
+    background-color: #4a9eff;
+    color: #ffffff;
+    border: none;
+    border-radius: 5px;
+    font-weight: bold;
+    transition: background-color 0.3s;
+}
+
+.stButton > button:hover {
+    background-color: #0056b3;
+}
+
+/* Botón primario (submit) */
+.stButton > button[kind="primary"] {
+    background-color: #28a745;
+}
+
+.stButton > button[kind="primary"]:hover {
+    background-color: #218838;
+}
+
+/* Botón secundario */
+.stButton > button[kind="secondary"] {
+    background-color: #6c757d;
+}
+
+.stButton > button[kind="secondary"]:hover {
+    background-color: #5a6268;
+}
+
+/* Campos de texto, números y selectores */
+.stTextInput > div > div > input,
+.stNumberInput > div > div > input,
+.stSelectbox > div > div > select {
+    background-color: #4a4a4a;
+    color: #ffffff;
+    border: 1px solid #555555;
+}
+
+/* Tablas de datos */
+.dataframe {
+    background-color: #3c3c3c;
+    color: #ffffff;
+    border-radius: 5px;
+}
+
+.dataframe th {
+    background-color: #4a9eff;
+    color: #ffffff;
+}
+
+/* Métricas */
+.stMetric {
+    background-color: #3c3c3c;
+    border-left: 5px solid #4a9eff;
+    padding: 1rem;
+    border-radius: 5px;
+}
